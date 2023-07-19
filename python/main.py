@@ -20,7 +20,11 @@ CACHE_DIR = Path("/tmp").joinpath(
 cache = SimpleJSONFileCache(CACHE_DIR)
 
 
-@retry(tries=10, delay=1, backoff=2, max_delay=60)
+class RateLimitError(Exception):
+    pass
+
+
+@retry(RateLimitError, tries=10, delay=1, backoff=2, max_delay=60)
 def GET(path: str):
     """GET request to TT API for a given path with rate limiting and retrying."""
     # Check if exists in cache
@@ -35,7 +39,7 @@ def GET(path: str):
 
     if response.status_code == 429:
         print(response.text)
-        raise Exception("too many calls")
+        raise RateLimitError("too many calls")
 
     if response.status_code != 200:
         print(f"expected response 200, got {response.status_code}: {response.text}")
